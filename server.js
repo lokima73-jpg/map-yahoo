@@ -58,6 +58,18 @@ const ko = (e) => ({ content: [{ type: "text", text: "Erreur : " + (e && e.messa
 const arrondi = (n, d = 5) => (n == null ? "" : String(Math.round(n * 10 ** d) / 10 ** d));
 const premier = (tab) => (tab || []).find((x) => x != null);
 
+function lireRss(xml, limite) {
+  const get = (bloc, tag) => {
+    const m = bloc.match(new RegExp("<" + tag + ">([\\s\\S]*?)</" + tag + ">"));
+    return m
+      ? m[1].replace(/<!\[CDATA\[|\]\]>/g, "").replace(/&amp;/g, "&").replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"').trim()
+      : "";
+  };
+  return [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)]
+    .slice(0, limite)
+    .map((i) => get(i[1], "title") + " | " + get(i[1], "pubDate") + " | " + get(i[1], "link"));
+}
+
 // ---------- Définition des outils ----------
 function creerServeur() {
   const server = new McpServer({ name: "yahoo-finance", version: "1.0.0" });
@@ -166,12 +178,76 @@ function creerServeur() {
     }
   );
 
+  server.tool(
+    "get_feed",
+    "Actualités économiques hors Yahoo (flux RSS publics : fxstreet, investinglive, cnbc). Format : titre | date | lien.",
+    {
+      source: z.enum(["fxstreet", "investinglive", "cnbc"]).describe("Source du flux"),
+      limit: z.number().int().min(1).max(20).default(10).describe("Nombre d'articles"),
+    },
+    async ({ source, limit }) => {
+      try {
+        const urls = {
+          fxstreet: "https://www.fxstreet.com/rss/news",
+          investinglive: "https://investinglive.com/feed",
+          cnbc: "https://www.cnbc.com/id/20910258/device/rss/rss.html",
+        };
+        const r = await fetch(urls[source], { headers: UA });
+        if (!r.ok) throw new Error("Le flux " + source + " a répondu " + r.status);
+        const lignes = lireRss(await r.text(), limit);
+        if (!lignes.length) return ok("Aucune actualité pour " + source);
+        return ok("titre | date | lien\n" + lignes.join("\n"));
+      } catch (e) {
+        return ko(e);
+      }
+    }
+  );
+
+  server.tool(
+    "get_article",
+    "Lit le texte d'un article web public (https) et renvoie son contenu principal, sans mise en page.",
+    { url: z.string().url().describe("Adresse https de l'article") },
+    async ({ url }) => {
+      try {
+        const u = new URL(url);
+        const h = u.hostname.toLowerCase();
+        if (u.protocol !== "https:" || !h.includes(".") || /^[\d.]+$/.test(h) || h.includes(":") || /(^|\.)(localhost|local|internal|lan)$/.test(h)) {
+          throw new Error("Adresse non autorisée");
+        }
+        const r = await fetch(url, { headers: UA, signal: AbortSignal.timeout(10000), redirect: "follow" });
+        if (!r.ok) throw new Error("Le site a répondu " + r.status);
+        const html = (await r.text()).slice(0, 1500000);
+        const propre = html.replace(/<(script|style|nav|header|footer|aside|form)[\s\S]*?<\/\1>/gi, " ");
+        const paras = [...propre.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
+          .map((m) =>
+            m[1]
+              .replace(/<[^>]+>/g, " ")
+              .replace(/&nbsp;/g, " ")
+              .replace(/&amp;/g, "&")
+              .replace(/&#39;|&apos;|&rsquo;/g, "'")
+              .replace(/&quot;|&ldquo;|&rdquo;/g, '"')
+              .replace(/\s+/g, " ")
+              .trim()
+          )
+          .filter((x) => x.length > 60);
+        if (!paras.length) throw new Error("Aucun texte lisible (page protégée ?)");
+        return ok(paras.join("\n\n").slice(0, 8000));
+      } catch (e) {
+        return ko(e);
+      }
+    }
+  );
+
   return server;
 }
 
 // ---------- Serveur HTTP (mode sans session) ----------
 const app = express();
 app.use(express.json());
+app.use((req, res, next) => {
+  console.log(new Date().toISOString() + " " + req.method + " " + req.url);
+  next();
+});
 
 app.post("/mcp", async (req, res) => {
   const server = creerServeur();
