@@ -58,6 +58,18 @@ const ko = (e) => ({ content: [{ type: "text", text: "Erreur : " + (e && e.messa
 const arrondi = (n, d = 5) => (n == null ? "" : String(Math.round(n * 10 ** d) / 10 ** d));
 const premier = (tab) => (tab || []).find((x) => x != null);
 
+function lireRss(xml, limite) {
+  const get = (bloc, tag) => {
+    const m = bloc.match(new RegExp("<" + tag + ">([\\s\\S]*?)</" + tag + ">"));
+    return m
+      ? m[1].replace(/<!\[CDATA\[|\]\]>/g, "").replace(/&amp;/g, "&").replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"').trim()
+      : "";
+  };
+  return [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)]
+    .slice(0, limite)
+    .map((i) => get(i[1], "title") + " | " + get(i[1], "pubDate") + " | " + get(i[1], "link"));
+}
+
 // ---------- Définition des outils ----------
 function creerServeur() {
   const server = new McpServer({ name: "yahoo-finance", version: "1.0.0" });
@@ -166,12 +178,41 @@ function creerServeur() {
     }
   );
 
+  server.tool(
+    "get_feed",
+    "Actualités économiques hors Yahoo (flux RSS publics : fxstreet, investinglive, cnbc). Format : titre | date | lien.",
+    {
+      source: z.enum(["fxstreet", "investinglive", "cnbc"]).describe("Source du flux"),
+      limit: z.number().int().min(1).max(20).default(10).describe("Nombre d'articles"),
+    },
+    async ({ source, limit }) => {
+      try {
+        const urls = {
+          fxstreet: "https://www.fxstreet.com/rss/news",
+          investinglive: "https://investinglive.com/feed",
+          cnbc: "https://www.cnbc.com/id/20910258/device/rss/rss.html",
+        };
+        const r = await fetch(urls[source], { headers: UA });
+        if (!r.ok) throw new Error("Le flux " + source + " a répondu " + r.status);
+        const lignes = lireRss(await r.text(), limit);
+        if (!lignes.length) return ok("Aucune actualité pour " + source);
+        return ok("titre | date | lien\n" + lignes.join("\n"));
+      } catch (e) {
+        return ko(e);
+      }
+    }
+  );
+
   return server;
 }
 
 // ---------- Serveur HTTP (mode sans session) ----------
 const app = express();
 app.use(express.json());
+app.use((req, res, next) => {
+  console.log(new Date().toISOString() + " " + req.method + " " + req.url);
+  next();
+});
 
 app.post("/mcp", async (req, res) => {
   const server = creerServeur();
