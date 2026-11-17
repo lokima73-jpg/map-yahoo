@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XAU/USD en direct</title>
+<meta name="description" content="Cours de l’or en dollars, actualités classées par impact et calendrier USD, mis à jour automatiquement.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='white'/%3E%3C/svg%3E">
+<style>
+:root{--bg:#000;--fg:#fff;--mut:#9a9a9a;--line:#262626;color-scheme:dark}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;color:var(--fg);font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.top{display:flex;align-items:baseline;gap:14px;padding:18px clamp(16px,4vw,40px);border-bottom:1px solid var(--line)}
+.top b{font-size:18px}
+.top span{color:var(--mut)}
+.status{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px}
+.live{width:8px;height:8px;border-radius:50%;background:var(--fg);animation:pulse 2s infinite}
+.off .live{background:transparent;border:1px solid var(--mut);animation:none}
+@keyframes pulse{50%{opacity:.25}}
+main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:clamp(24px,4vw,56px);align-items:start;max-width:1280px;margin:0 auto;padding:28px clamp(16px,4vw,40px) 40px}
+.price{font-size:clamp(48px,9vw,96px);font-weight:600;letter-spacing:-.035em;line-height:1;font-variant-numeric:tabular-nums}
+.price.tick{animation:tick .6s}
+@keyframes tick{from{opacity:.3}}
+.chg{margin-top:12px;font-size:16px;font-variant-numeric:tabular-nums}
+.sub{color:var(--mut);font-size:13px;margin:4px 0 0}
+.tabs{display:flex;gap:4px;margin:28px 0 12px}
+.tabs button{background:none;border:1px solid transparent;color:var(--mut);font:inherit;padding:5px 14px;border-radius:999px;cursor:pointer}
+.tabs button:hover{color:var(--fg)}
+.tabs button[aria-pressed=true]{background:#fff;color:#000}
+button:focus-visible,a:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.chart{position:relative;height:clamp(200px,34vw,320px);border-block:1px solid var(--line);touch-action:pan-y}
+.chart svg{display:block;width:100%;height:100%}
+.chart svg.in{animation:reveal 1s ease-out}
+@keyframes reveal{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+.ylab{position:absolute;left:0;font-size:12px;color:var(--mut);font-variant-numeric:tabular-nums}
+#vl{position:absolute;top:0;bottom:0;width:1px;background:#4a4a4a;opacity:0;pointer-events:none}
+#pt{position:absolute;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.2);pointer-events:none;animation:fade .3s 1s both}
+@keyframes fade{from{opacity:0}}
+#tip{position:absolute;top:8px;transform:translateX(-50%);background:#fff;color:#000;padding:4px 10px;border-radius:6px;font-size:13px;text-align:center;white-space:pre-line;opacity:0;pointer-events:none;font-variant-numeric:tabular-nums}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:18px 0 44px}
+.stats dt{color:var(--mut);font-size:13px}
+.stats dd{margin:2px 0 0;font-size:18px;font-variant-numeric:tabular-nums}
+h2{margin:0;font-size:16px;font-weight:600}
+ol{list-style:none;margin:14px 0 0;padding:0}
+li{padding:14px 0;border-top:1px solid var(--line)}
+li a{color:var(--fg);font-weight:500;font-size:16px;line-height:1.35;text-decoration:none}
+li a:hover{text-decoration:underline;text-underline-offset:3px}
+.meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-top:6px;font-size:13px;color:var(--mut)}
+.chip{border:1px solid var(--mut);border-radius:999px;padding:1px 9px;font-size:12px;color:var(--fg)}
+.chip.fort{background:#fff;border-color:#fff;color:#000}
+.chip.faible{border-color:var(--line);color:var(--mut)}
+.empty{color:var(--mut)}
+aside{position:sticky;top:20px}
+footer{max-width:1280px;margin:0 auto;padding:20px clamp(16px,4vw,40px) 40px;border-top:1px solid var(--line);color:var(--mut);font-size:12px}
+@media (max-width:860px){main{grid-template-columns:1fr}aside{position:static}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <b>XAU/USD</b><span>Or contre dollar américain</span>
+  <span class="status on" id="status"><i class="live"></i><span id="st">Connexion…</span></span>
+</header>
+<main>
+  <section>
+    <div id="price" class="price" aria-live="polite">–</div>
+    <div id="chg" class="chg"></div>
+    <p id="upd" class="sub"></p>
+    <div class="tabs" id="tabs" role="group" aria-label="Période">
+      <button data-r="1d" aria-pressed="true">1 jour</button>
+      <button data-r="5d" aria-pressed="false">5 jours</button>
+      <button data-r="1mo" aria-pressed="false">1 mois</button>
+      <button data-r="1y" aria-pressed="false">1 an</button>
+    </div>
+    <div class="chart" id="chart">
+      <svg id="svg" viewBox="0 0 800 300" preserveAspectRatio="none" aria-hidden="true">
+        <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
+        <path id="area" fill="url(#g)"/>
+        <path id="line" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+      </svg>
+      <span class="ylab" id="ymax" style="top:6px"></span><span class="ylab" id="ymin" style="bottom:6px"></span>
+      <i id="vl"></i><i id="pt"></i><div id="tip"></div>
+    </div>
+    <dl class="stats">
+      <div><dt>Plus haut</dt><dd id="hi">–</dd></div>
+      <div><dt>Plus bas</dt><dd id="lo">–</dd></div>
+      <div><dt id="pvl">Clôture de la veille</dt><dd id="pv">–</dd></div>
+    </dl>
+    <h2>Actualités classées par impact sur l’or</h2>
+    <p class="sub">Les plus importantes et les plus récentes en premier. Mise à jour automatique.</p>
+    <ol id="news"><li class="empty">Chargement…</li></ol>
+  </section>
+  <aside>
+    <h2>Calendrier économique USD</h2>
+    <p class="sub">Événements à impact fort ou moyen, à ton heure locale.</p>
+    <ol id="cal"><li class="empty">Chargement…</li></ol>
+  </aside>
+</main>
+<footer>Sources : Yahoo Finance, Google Actualités et calendrier économique Forex Factory. Données indicatives, parfois différées. Ce site ne constitue pas un conseil en investissement.</footer>
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (n, d = 2) => n.toLocaleString("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d });
+const when = new Intl.DateTimeFormat("fr-FR", { weekday: "short", hour: "2-digit", minute: "2-digit" });
+const ago = (ms) => {
+  const s = Math.max(0, Math.round((Date.now() - ms) / 1000));
+  return s < 60 ? "il y a " + s + " s" : s < 3600 ? "il y a " + Math.round(s / 60) + " min" : s < 86400 ? "il y a " + Math.round(s / 3600) + " h" : "il y a " + Math.round(s / 86400) + " j";
+};
+const PERIOD = { "1d": "aujourd’hui", "5d": "sur 5 jours", "1mo": "sur 1 mois", "1y": "sur 1 an" };
+let range = "1d", drawn = "", pos = null, lastPrice = null, quoteT = 0, sym = "";
+
+async function api(part, q = "") {
+  const c = new AbortController(), t = setTimeout(() => c.abort(), 12000);
+  try {
+    const r = await fetch("/api/data?part=" + part + q, { signal: c.signal });
+    if (!r.ok) throw new Error(r.status);
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+function status(good) {
+  $("status").className = "status " + (good ? "on" : "off");
+  $("st").textContent = good ? "En direct" : "Connexion perdue, nouvel essai…";
+}
+
+function mark(i, hover) {
+  const p = pos.s[i], l = (pos.x(i) / pos.W) * 100;
+  $("pt").style.cssText = "left:" + l + "%;top:" + (pos.y(p[1]) / pos.H) * 100 + "%";
+  $("vl").style.cssText = "left:" + l + "%;opacity:" + (hover ? 1 : 0);
+  const t = $("tip");
+  t.textContent = fmt(p[1]) + "\n" + when.format(p[0] * 1000);
+  t.style.cssText = "left:" + Math.min(88, Math.max(12, l)) + "%;opacity:" + (hover ? 1 : 0);
+}
+function drawChart(d) {
+  const s = d.series, W = 800, H = 300, P = 20, v = s.map((p) => p[1]);
+  const lo = Math.min(...v), hi = Math.max(...v), span = hi - lo || 1;
+  const x = (i) => (i / Math.max(1, s.length - 1)) * W, y = (n) => H - P - ((n - lo) / span) * (H - 2 * P);
+  const pts = s.map((p, i) => x(i).toFixed(1) + "," + y(p[1]).toFixed(1)).join("L");
+  $("line").setAttribute("d", "M" + pts);
+  $("area").setAttribute("d", "M0," + H + "L" + pts + "L" + W + "," + H + "Z");
+  $("ymax").textContent = fmt(hi);
+  $("ymin").textContent = fmt(lo);
+  pos = { s, x, y, W, H };
+  mark(s.length - 1, false);
+  if (drawn !== d.range) {
+    drawn = d.range;
+    const el = $("svg");
+    el.classList.remove("in"); void el.getBoundingClientRect(); el.classList.add("in");
+  }
+}
+function drawPrice(d) {
+  const el = $("price"), diff = d.price - d.prev, pct = (diff / d.prev) * 100, sg = diff >= 0 ? "+" : "−";
+  el.textContent = fmt(d.price);
+  if (lastPrice !== null && lastPrice !== d.price) { el.classList.remove("tick"); void el.offsetWidth; el.classList.add("tick"); }
+  lastPrice = d.price; quoteT = d.t * 1000; sym = d.symbol;
+  $("chg").textContent = (diff >= 0 ? "▲ " : "▼ ") + sg + fmt(Math.abs(diff)) + " (" + sg + fmt(Math.abs(pct)) + " %) " + PERIOD[d.range];
+  $("hi").textContent = fmt(d.high);
+  $("lo").textContent = fmt(d.low);
+  $("pv").textContent = fmt(d.prev);
+  $("pvl").textContent = d.range === "1d" ? "Clôture de la veille" : "Début de période";
+  drawChart(d);
+}
+function refreshAgo() {
+  if (!quoteT) return;
+  const closed = Date.now() - quoteT > 20 * 60 * 1000;
+  $("upd").textContent = (closed ? "Marché fermé ou cotation figée, dernière cotation " : "Dernière cotation ") + ago(quoteT) + (sym === "GC=F" ? ". Source de secours : future or GC=F." : "");
+}
+
+function chip(label) {
+  const b = document.createElement("span");
+  b.className = "chip " + label.toLowerCase();
+  b.textContent = "Impact " + label.toLowerCase();
+  return b;
+}
+function drawNews(list) {
+  const ol = $("news");
+  ol.textContent = "";
+  ol.dataset.ok = "1";
+  if (!list.length) { ol.innerHTML = '<li class="empty">Aucune actualité pertinente pour le moment. La liste se met à jour toute seule.</li>'; return; }
+  for (const n of list) {
+    const li = document.createElement("li"), a = document.createElement("a"), m = document.createElement("div");
+    a.href = n.u; a.target = "_blank"; a.rel = "noopener noreferrer"; a.textContent = n.t;
+    m.className = "meta";
+    m.append(chip(n.i), (n.s || "Source inconnue") + ", " + ago(n.ts));
+    if (n.k.length) { const k = document.createElement("span"); k.textContent = n.k.join(", "); m.append(k); }
+    li.append(a, m);
+    ol.append(li);
+  }
+}
+function drawCal(ev) {
+  const ol = $("cal"), up = ev.filter((e) => e.ts > Date.now() - 36e5).slice(0, 8);
+  ol.textContent = "";
+  ol.dataset.ok = "1";
+  if (!up.length) { ol.innerHTML = '<li class="empty">Plus d’événement USD important cette semaine.</li>'; return; }
+  for (const e of up) {
+    const li = document.createElement("li"), t = document.createElement("div"), m = document.createElement("div");
+    t.textContent = e.ti; t.style.fontWeight = 500;
+    m.className = "meta";
+    m.append(chip(e.imp), when.format(e.ts), "Prévu " + (e.f || "n/d") + ", précédent " + (e.p || "n/d"));
+    li.append(t, m);
+    ol.append(li);
+  }
+}
+
+async function loadPrice() {
+  try { const d = await api("price", "&range=" + range); if (d.range === range) { drawPrice(d); refreshAgo(); } status(true); }
+  catch (e) { status(false); }
+}
+async function loadNews() {
+  try { drawNews(await api("news")); }
+  catch (e) { if (!$("news").dataset.ok) $("news").innerHTML = '<li class="empty">Actualités indisponibles pour l’instant. Nouvel essai automatique dans une minute.</li>'; }
+}
+async function loadCal() {
+  try { drawCal(await api("cal")); }
+  catch (e) { if (!$("cal").dataset.ok) $("cal").innerHTML = '<li class="empty">Calendrier indisponible pour l’instant. Nouvel essai automatique.</li>'; }
+}
+
+$("tabs").addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  range = b.dataset.r;
+  document.querySelectorAll("#tabs button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  loadPrice();
+});
+$("chart").addEventListener("pointermove", (e) => {
+  if (!pos) return;
+  const r = $("chart").getBoundingClientRect(), f = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+  mark(Math.round(f * (pos.s.length - 1)), true);
+});
+$("chart").addEventListener("pointerleave", () => pos && mark(pos.s.length - 1, false));
+
+setInterval(() => !document.hidden && loadPrice(), 30000);
+setInterval(() => !document.hidden && loadNews(), 60000);
+setInterval(() => !document.hidden && loadCal(), 600000);
+setInterval(refreshAgo, 1000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { loadPrice(); loadNews(); } });
+loadPrice(); loadNews(); loadCal();
+</script>
+</body>
+</html>
